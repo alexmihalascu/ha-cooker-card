@@ -1,4 +1,4 @@
-const VERSION = "0.1.0";
+const VERSION = "0.1.1";
 
 function classify(state) {
   const s = (state || "").toLowerCase();
@@ -34,8 +34,8 @@ class CookerCard extends HTMLElement {
   }
 
   set hass(hass) { this._hass = hass; this.render(); }
-  getCardSize() { return 6; }
-  getGridOptions() { return { columns: 12, rows: 7, min_columns: 6, min_rows: 6 }; }
+  getCardSize() { return 8; }
+  getGridOptions() { return { columns: 12, rows: 10, min_columns: 6, min_rows: 9 }; }
 
   state() { return this._hass?.states[this.config.entity]; }
   primaryEntity() {
@@ -85,7 +85,7 @@ class CookerCard extends HTMLElement {
 
     const leftMin = this.leftTimeMinutes();
     const fault = this.config.fault ? this._hass?.states[this.config.fault] : undefined;
-    const hasFault = fault && fault.state && !/none|ok|^0$/i.test(fault.state);
+    const hasFault = fault && fault.state && !/none|ok|^0$|unavailable|unknown/i.test(fault.state);
 
     this.shadowRoot.innerHTML = `<style>
       :host{display:block;height:100%}ha-card{height:100%;box-sizing:border-box;overflow:hidden;position:relative;padding:20px;border-radius:26px;background:linear-gradient(160deg,var(--ha-card-background,var(--card-background-color)) 30%,color-mix(in srgb,${ACCENT} 12%,var(--ha-card-background,var(--card-background-color))));transition:background .5s ease}

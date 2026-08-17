@@ -1,4 +1,4 @@
-const VERSION = "0.1.1";
+const VERSION = "0.2.0";
 
 function classify(state) {
   const s = (state || "").toLowerCase();
@@ -16,6 +16,42 @@ const CLASS_COLOR = {
   idle: null, // foloseste accentul din config
   active: null, // foloseste accentul din config
 };
+
+// Siluete simplificate, plate, ale aparatelor reale - nu un dial generic de termostat.
+function airFryerSvg(readout, unit, active) {
+  return `<svg viewBox="0 0 240 210" class="appliance">
+    <g class="heat">
+      <path d="M96,28 q6,-14 0,-26"></path>
+      <path d="M120,28 q6,-14 0,-26"></path>
+      <path d="M144,28 q6,-14 0,-26"></path>
+    </g>
+    <rect x="35" y="34" width="170" height="148" rx="30" class="body"></rect>
+    <rect x="75" y="46" width="90" height="5" rx="2.5" class="vent"></rect>
+    <rect x="85" y="56" width="70" height="5" rx="2.5" class="vent"></rect>
+    <rect x="58" y="78" width="124" height="56" rx="14" class="panel"></rect>
+    <text x="120" y="115" text-anchor="middle" class="readout">${readout}<tspan class="unit"> ${unit}</tspan></text>
+    <rect x="75" y="150" width="90" height="16" rx="8" class="handle"></rect>
+    <rect x="45" y="182" width="150" height="10" rx="5" class="base"></rect>
+  </svg>`;
+}
+
+function riceCookerSvg(readout, unit, active) {
+  return `<svg viewBox="0 0 240 210" class="appliance">
+    <g class="heat">
+      <path d="M112,52 q6,-14 0,-26"></path>
+      <path d="M130,52 q6,-14 0,-26"></path>
+    </g>
+    <path d="M45,112 Q45,40 121,40 Q197,40 197,112 Z" class="lid"></path>
+    <circle cx="121" cy="46" r="9" class="knob"></circle>
+    <rect x="14" y="124" width="24" height="34" rx="12" class="ear"></rect>
+    <rect x="203" y="124" width="24" height="34" rx="12" class="ear"></rect>
+    <rect x="35" y="108" width="172" height="80" rx="26" class="body"></rect>
+    <rect x="70" y="134" width="100" height="40" rx="10" class="panel"></rect>
+    <text x="120" y="162" text-anchor="middle" class="readout">${readout}<tspan class="unit"> ${unit}</tspan></text>
+  </svg>`;
+}
+
+const SHAPES = { "air-fryer": airFryerSvg, "rice-cooker": riceCookerSvg };
 
 class CookerCard extends HTMLElement {
   setConfig(config) {
@@ -82,26 +118,47 @@ class CookerCard extends HTMLElement {
     const pMax = p ? Number(p.attributes.max ?? 100) : 100;
     const pUnit = this.config.primary?.unit ?? p?.attributes?.unit_of_measurement ?? "";
     const pct = p ? Math.max(0, Math.min(100, ((pVal - pMin) / (pMax - pMin)) * 100)) : 0;
+    const readout = Number.isFinite(pVal) ? Math.round(pVal) : "--";
 
     const leftMin = this.leftTimeMinutes();
     const fault = this.config.fault ? this._hass?.states[this.config.fault] : undefined;
     const hasFault = fault && fault.state && !/none|ok|^0$|unavailable|unknown/i.test(fault.state);
 
+    const shapeFn = SHAPES[this.config.shape];
+    const nActions = this.config.actions.length || 1;
+
     this.shadowRoot.innerHTML = `<style>
       :host{display:block;height:100%}ha-card{height:100%;box-sizing:border-box;overflow:hidden;position:relative;padding:20px;border-radius:26px;background:linear-gradient(160deg,var(--ha-card-background,var(--card-background-color)) 30%,color-mix(in srgb,${ACCENT} 12%,var(--ha-card-background,var(--card-background-color))));transition:background .5s ease}
       ha-card:before{content:"";position:absolute;width:280px;height:280px;border-radius:50%;right:-110px;top:-130px;background:${ACCENT};filter:blur(58px);opacity:${active ? ".22" : ".08"};animation:${active ? "breathe 2.4s ease-in-out infinite" : "none"}}@keyframes breathe{50%{transform:scale(1.22);opacity:.32}}
-      .head,.title,.status,.controls,.facts,.selects,.switches,.actions{display:flex;align-items:center}.head{position:relative;justify-content:space-between}.title{gap:11px}.title ha-icon{--mdc-icon-size:30px;color:${ACCENT}}.title strong{display:block;font-size:18px}.title small{opacity:.62}.status{gap:7px;padding:7px 12px;border-radius:99px;font-weight:700;background:color-mix(in srgb,${ACCENT} 15%,transparent);color:${ACCENT}}.status i{width:9px;height:9px;border-radius:50%;background:currentColor;animation:${active ? "pulse 1.5s infinite" : "none"}}@keyframes pulse{70%{box-shadow:0 0 0 10px transparent}0%{box-shadow:0 0 0 0 currentColor}}
+      .head,.title,.status,.trim,.facts,.selects,.switches{display:flex;align-items:center}.head{position:relative;justify-content:space-between}.title{gap:11px}.title ha-icon{--mdc-icon-size:30px;color:${ACCENT}}.title strong{display:block;font-size:18px}.title small{opacity:.62}.status{gap:7px;padding:7px 12px;border-radius:99px;font-weight:700;background:color-mix(in srgb,${ACCENT} 15%,transparent);color:${ACCENT}}.status i{width:9px;height:9px;border-radius:50%;background:currentColor;animation:${active ? "pulse 1.5s infinite" : "none"}}@keyframes pulse{70%{box-shadow:0 0 0 10px transparent}0%{box-shadow:0 0 0 0 currentColor}}
       .dial{position:relative;width:190px;height:190px;margin:14px auto 8px;display:grid;place-items:center;border-radius:50%;background:radial-gradient(circle at 32% 26%,color-mix(in srgb,var(--card-background-color) 100%,white 6%),color-mix(in srgb,var(--card-background-color) 84%,black 10%));box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 -8px 16px rgba(0,0,0,.14) inset,0 10px 24px rgba(0,0,0,.16)}
       .ring{position:absolute;inset:9px;border-radius:50%;background:conic-gradient(from 225deg,${ACCENT} calc(${pct} * .75%),color-mix(in srgb,var(--secondary-text-color) 16%,transparent) 0 75%,transparent 0);mask:radial-gradient(circle,transparent 60%,#000 61%);transition:background .7s ease}
       .center{text-align:center;z-index:1}.val{font-size:46px;font-weight:300;line-height:1}.val sup{font-size:16px}.caption{font-size:12px;opacity:.64;margin-top:5px}
-      .controls{position:absolute;inset:50% -2px auto;transform:translateY(-50%);justify-content:space-between}.ctl{border:0;width:44px;height:44px;border-radius:50%;background:var(--card-background-color);color:var(--primary-text-color);font-size:22px;cursor:pointer;transition:.2s;box-shadow:0 2px 6px rgba(0,0,0,.14),0 0 0 1px color-mix(in srgb,var(--secondary-text-color) 14%,transparent) inset}.ctl:active{transform:scale(.9)}
+      .appliance-wrap{margin:10px auto 4px;max-width:210px}.appliance{width:100%;height:auto;display:block;overflow:visible}
+      .appliance .body{fill:color-mix(in srgb,var(--card-background-color) 80%,var(--primary-text-color) 20%);stroke:color-mix(in srgb,var(--secondary-text-color) 26%,transparent);stroke-width:2}
+      .appliance .lid{fill:color-mix(in srgb,var(--primary-text-color) 76%,var(--card-background-color) 24%);opacity:.94}
+      .appliance .ear{fill:color-mix(in srgb,var(--card-background-color) 80%,var(--primary-text-color) 20%);stroke:color-mix(in srgb,var(--secondary-text-color) 26%,transparent);stroke-width:2}
+      .appliance .knob{fill:color-mix(in srgb,var(--secondary-text-color) 55%,transparent)}
+      .appliance .vent{fill:color-mix(in srgb,var(--secondary-text-color) 45%,transparent)}
+      .appliance .handle{fill:color-mix(in srgb,var(--secondary-text-color) 55%,transparent)}
+      .appliance .base{fill:color-mix(in srgb,var(--secondary-text-color) 30%,transparent)}
+      .appliance .panel{fill:#17181c}
+      .appliance .readout{font:700 30px/1 ui-monospace,'DejaVu Sans Mono',monospace;fill:${ACCENT};filter:drop-shadow(0 0 5px color-mix(in srgb,${ACCENT} 65%,transparent))}
+      .appliance .readout .unit{font-size:14px;fill:color-mix(in srgb,${ACCENT} 65%,white 15%)}
+      .appliance .heat path{fill:none;stroke:${ACCENT};stroke-width:3;stroke-linecap:round;opacity:${active ? ".6" : "0"};transition:opacity .4s;transform-box:fill-box;transform-origin:center;animation:${active ? "rise 1.6s ease-in-out infinite" : "none"}}
+      @keyframes rise{0%{transform:translateY(6px);opacity:.12}50%{transform:translateY(-6px);opacity:.62}100%{transform:translateY(6px);opacity:.12}}
+      .trim{justify-content:center;gap:14px;margin:2px 0 10px}.trim .ctl{border:0;width:38px;height:38px;border-radius:50%;background:var(--card-background-color);color:var(--primary-text-color);font-size:19px;cursor:pointer;transition:.2s;box-shadow:0 2px 6px rgba(0,0,0,.14),0 0 0 1px color-mix(in srgb,var(--secondary-text-color) 14%,transparent) inset}.trim .ctl:active{transform:scale(.9)}.trim .trimlabel{font-size:12px;opacity:.64;min-width:90px;text-align:center}
+      .controls{position:absolute;inset:50% -2px auto;transform:translateY(-50%);justify-content:space-between;display:flex}.ctl{border:0;width:44px;height:44px;border-radius:50%;background:var(--card-background-color);color:var(--primary-text-color);font-size:22px;cursor:pointer;transition:.2s;box-shadow:0 2px 6px rgba(0,0,0,.14),0 0 0 1px color-mix(in srgb,var(--secondary-text-color) 14%,transparent) inset}.ctl:active{transform:scale(.9)}
       .facts{justify-content:center;gap:26px;margin:8px 0 12px;flex-wrap:wrap}.fact{text-align:center}.fact b{display:block;font-size:15px;color:${hasFault ? "#e53935" : "inherit"}}.fact span{font-size:11px;opacity:.62}
       .selects{gap:8px;flex-wrap:wrap;margin-bottom:10px}.selects label{display:flex;flex-direction:column;gap:3px;font-size:10px;opacity:.62;flex:1;min-width:110px}select{font:inherit;font-size:13px;padding:7px 8px;border-radius:10px;border:1px solid color-mix(in srgb,var(--secondary-text-color) 22%,transparent);background:var(--card-background-color);color:var(--primary-text-color)}
       .switches{gap:8px;flex-wrap:wrap;margin-bottom:10px}.chip{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:99px;border:0;font-size:12px;font-weight:600;cursor:pointer;background:color-mix(in srgb,var(--secondary-text-color) 9%,transparent);color:var(--primary-text-color)}.chip.on{background:${ACCENT};color:#fff}
-      .actions{gap:9px}.act{flex:1;border:0;border-radius:14px;padding:10px 8px;background:color-mix(in srgb,var(--secondary-text-color) 9%,transparent);color:var(--primary-text-color);font-weight:700;cursor:pointer;font-size:13px}.act.primary{color:#fff;background:${ACCENT}}.act ha-icon{--mdc-icon-size:16px;vertical-align:middle;margin-right:4px}
+      .actions{display:grid;grid-template-columns:repeat(${nActions},1fr);gap:9px}.act{border:0;border-radius:14px;padding:10px 6px;background:color-mix(in srgb,var(--secondary-text-color) 9%,transparent);color:var(--primary-text-color);font-weight:700;cursor:pointer;font-size:13px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.act.primary{color:#fff;background:${ACCENT}}.act ha-icon{--mdc-icon-size:16px;vertical-align:middle;margin-right:4px}
     </style><ha-card>
       <div class="head"><div class="title"><ha-icon icon="${this.config.icon}"></ha-icon><div><strong>${this.config.name}</strong><small>${this.config.room}</small></div></div><div class="status"><i></i>${s.state}</div></div>
-      ${p ? `<div class="dial"><div class="ring"></div><div class="controls"><button class="ctl minus">−</button><button class="ctl plus">+</button></div><div class="center"><div class="val">${Number.isFinite(pVal) ? pVal : "—"}<sup>${pUnit}</sup></div><div class="caption">${this.config.primary?.label || "setare"}</div></div></div>` : ""}
+      ${shapeFn ? `
+        <div class="appliance-wrap">${shapeFn(readout, pUnit, active)}</div>
+        ${p ? `<div class="trim"><button class="ctl minus">−</button><span class="trimlabel">${this.config.primary?.label || "setare"}</span><button class="ctl plus">+</button></div>` : ""}
+      ` : p ? `<div class="dial"><div class="ring"></div><div class="controls"><button class="ctl minus">−</button><button class="ctl plus">+</button></div><div class="center"><div class="val">${Number.isFinite(pVal) ? pVal : "—"}<sup>${pUnit}</sup></div><div class="caption">${this.config.primary?.label || "setare"}</div></div></div>` : ""}
       <div class="facts">
         ${leftMin != null ? `<div class="fact"><b>${leftMin.toFixed(0)} min</b><span>Timp rămas</span></div>` : ""}
         ${hasFault ? `<div class="fact"><b>${fault.state}</b><span>Eroare</span></div>` : ""}

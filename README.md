@@ -15,6 +15,7 @@ entity: sensor.xiaomi_de_874869297_maf65_status_p_2_1
 name: Air Fryer 6.5L
 icon: mdi:air-fryer
 accent: "#ff8a00"
+shape: air-fryer
 primary:
   entity: number.xiaomi_de_874869297_maf65_target_temperature_p_2_4
   label: temperatură țintă
@@ -43,11 +44,15 @@ actions:
     icon: mdi:stop
 ```
 
-`primary` is optional — when set it draws the round dial (temperature or time,
-whatever numeric `number.*` entity you point it at) with +/- controls. `left_time`
-accepts a sensor in minutes or seconds (auto-converted). `selects` render as native
-dropdowns bound to `select.*` entities, `switches` as toggle chips, `actions` as
-buttons that call `button.press`.
+`shape` picks a flat illustration of the actual appliance instead of the generic
+round dial: `air-fryer` (cylindrical body, vent slits, drawer handle) or
+`rice-cooker` (domed lid, steam knob, side handles). The `primary` entity's value
+is shown on the appliance's own digital display. Omit `shape` to fall back to the
+generic round dial. `primary` is optional — when set it exposes +/- controls
+(temperature or time, whatever numeric `number.*` entity you point it at).
+`left_time` accepts a sensor in minutes or seconds (auto-converted). `selects`
+render as native dropdowns bound to `select.*` entities, `switches` as toggle
+chips, `actions` as equal-width buttons that call `button.press`.
 
 ## License
 
